@@ -11,6 +11,7 @@ import { difficultyOf, difficultyFor, TIME_LIMIT, summonAid, summonCount } from 
 import { RAGE, rageMul, RAGE_RIVAL_ROAR_CD } from './rage.js';
 import { guardTick, GUARD_TUNE, breaksGuard, isChargeMove } from './guard.js';
 import { TUNE, tn, tnSqrt, CHASE, COUNTER, DIVE_CP } from './tune.js';
+import { playerHurtSfx, enemyHurtSfx } from './hurtkind.js';      // 2026-11-15：くらい音を攻撃の種類で分ける
 const SPECIAL_MOVES = ['roar', 'shockwave', 'maul', 'special'];      // 主人公の CP 必殺（技の表 src/moves.js の SPECIALS と同じ）
 
 /**
@@ -2570,7 +2571,7 @@ export class World {
     const dmg = Math.max(1, Math.round(hit.dmg * mul * zm));
     if (zn) { const st = this.stats; st.zoneHits = (st.zoneHits || 0) + 1; st.zoneNom = (st.zoneNom || 0) + hit.dmg * mul; st.zoneApp = (st.zoneApp || 0) + dmg; if (zn.weak) st.weakHits = (st.weakHits || 0) + 1; }
     const heavy = !!L, weak = !!zn?.weak;
-    this.sfx(hit.sfx || 'hit');
+    for (const [k, v] of enemyHurtSfx(m && m.def, m && m.name, hit, !!waveCp)) this.sfx(k, v);      // 2026-11-15：敵のくらい音も受けた攻撃の種類で（当たり音は置き換え・専用の音は残す）
     this.spark(cx, cy, hit.spark || 'bite', dir, heavy ? 1.4 : 1);
     this.addCombo(1);
     this.comboDmg = (this.comboDmg || 0) + dmg;      // 版3.5：表示だけ
@@ -4075,7 +4076,7 @@ export class World {
       }
     }
     if (hit.grab) { this.startGrab(e, hit, cx, cy); return true; }      // 版2.3：つかみ（引きずり込み）
-    this.sfx('hurt'); this.sfx(hit.sfx || 'hit', 0.8);
+    this.sfx(playerHurtSfx(e.move && e.move.def, e.move && e.move.name, hit, brk)); this.sfx(hit.sfx || 'hit', 0.8);      // 2026-11-15：やられ音は受けた攻撃の種類で（brk＝コンボ破りの大技は重い音）
     this.spark(cx, cy, 'hurt', dir, 1.2);
     if (e.rival) {
       // ライバルの技：吹き飛ばし（launch）は、主人公を弱めに押す・浮かせる形に読み替える（主人公には「弾」の状態が無い）。
@@ -4175,7 +4176,7 @@ export class World {
   /** 口でくわえた：主人公は 'grabbed'（動けない・ほかの攻撃を受けない）。左右を交互に押すと抜けられる。 */
   startGrab(e, hit, cx, cy) {
     const p = this.player, m = e.move, spec = (m && m.def.grab) || { need: 6, tick: 0.4, tickDmg: 2 };
-    this.sfx('hurt'); this.sfx(hit.sfx || 'hit', 0.8);
+    this.sfx(playerHurtSfx(m && m.def, m && m.name, hit)); this.sfx(hit.sfx || 'hit', 0.8);
     this.spark(cx, cy, 'hurt', e.facing, 1.3);
     this.lastHurtSrc = { by: e.type, mv: m ? m.name : (hit.mv || null) };
     if (this.logHook) this.lg('hurt', { by: e.type, mv: m ? m.name : (hit.mv || null), dmg: hit.dmg, hp: Math.round(Math.max(0, p.hp - hit.dmg)), res: 'hit' });      // 版2.8：つかみ（くわえ）のダメージも遊びの記録に残す（前は漏れていた）

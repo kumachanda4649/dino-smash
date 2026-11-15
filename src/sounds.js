@@ -46,6 +46,9 @@ export const SE_NEW = {
   ram: 'DA_Ram',
   jump: 'DA_Jump',
   hurt: 'DA_Hurt',
+  hurtBlunt: 'DA_HurtBlunt',   // 2026-11-15：くらい音を攻撃の種類で分ける（Nao）。体当たり・踏みつけ・尻尾・衝撃波などの重い打撃（RPG1 の Dino_Btl_Attack_BodySlam を切った物）
+  hurtSharp: 'DA_HurtSharp',   // 噛みつき・爪・引っかきなどのとがった打撃（Dino_Btl_Attack_Scratch を切った物）
+  hurtHeavy: 'DA_HurtHeavy',   // 必殺・大技を受けたときの、さらに低く長い重い打撃（DA_HurtBlunt を低く・長くした物）
   playerDown: 'DA_PlayerDown',
   enemyDown: 'DA_EnemyDown',
   guard: 'DA_Guard',
@@ -73,6 +76,9 @@ export const SE_ORIG = {
   ram: 'Blow10',
   jump: 'Jump1',
   hurt: 'Damage2',
+  hurtBlunt: 'DA_HurtBlunt',      // 2026-11-15：どちらの SE_SET でも鳴る（標準素材には無い）
+  hurtSharp: 'DA_HurtSharp',
+  hurtHeavy: 'DA_HurtHeavy',
   playerDown: 'Collapse3',
   enemyDown: 'Down2',
   guard: 'Parry',
@@ -92,6 +98,9 @@ export const SE_ORIG = {
   dive: 'Dive',
   bubble: 'Water1',
 };
+
+/** 2026-11-15：くらい音を、受けた攻撃の種類で変える（src/hurtkind.js）。false なら従来どおり（主人公は hurt、敵は技の命中音）。 */
+export const HURT_BY_KIND = { on: true };
 
 export const SE = {
   bite: 'Dino_Btl_Attack_Bite',
@@ -157,6 +166,9 @@ export const SE_TRIM = {
   ram: -9.5,
   jump: -8,
   hurt: -8,
+  hurtBlunt: -10.5,   // 元の Dino_Btl_Attack_BodySlam と同じ補正（tools/audio/se_levels.mjs で hurt との大きさを確かめる）
+  hurtSharp: -7.5,   // 元の Dino_Btl_Attack_Scratch と同じ補正
+  hurtHeavy: -11.5,   // 低音を足した分、Blunt より大きく測れる（rms −18dB 前後）
   playerDown: -11,
   enemyDown: -8.5,
   guard: -8.5,
