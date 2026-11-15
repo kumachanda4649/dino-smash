@@ -1,0 +1,46 @@
+{
+ "BGM_AreaJungle": {
+  "loopStart": 0,
+  "loopEnd": 80.908889
+ },
+ "BGM_AreaPlains": {
+  "loopStart": 0,
+  "loopEnd": 66.896803
+ },
+ "BGM_AreaCliffSky": {
+  "loopStart": 0,
+  "loopEnd": 69.974558
+ },
+ "BGM_AreaSea": {
+  "loopStart": 0,
+  "loopEnd": 68.728231
+ },
+ "BGM_AreaRuins": {
+  "loopStart": 0,
+  "loopEnd": 60.684444
+ },
+ "BGM_AreaVolcano": {
+  "loopStart": 0,
+  "loopEnd": 70.758186
+ },
+ "BGM_AreaArena": {
+  "loopStart": 0,
+  "loopEnd": 62.258503
+ },
+ "BGM_Ending": {
+  "loopStart": 0,
+  "loopEnd": 78.416168
+ },
+ "DB_JungleMorning": {
+  "loopStart": 0,
+  "loopEnd": 75.16292517
+ },
+ "DB_WindDeparture": {
+  "loopStart": 0,
+  "loopEnd": 67.916439909
+ },
+ "DB_HolyLake": {
+  "loopStart": 0,
+  "loopEnd": 80.17276644
+ }
+}
