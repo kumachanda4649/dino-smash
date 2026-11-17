@@ -1,7 +1,7 @@
 // 版2.1：ポーズメニューの「技表」の中身を、技の表（moves.js の PLAYER_MOVES）から自動で作る。DOM に触れない。
 // 手書きの一覧は持たない。技の行を足すと技表も増える（表示名＝name・説明＝desc は技の行に1か所）。
 // 例外は「基本操作」（いどう・ガード）だけ：ガードは「↓を押し続ける」で、技の行ではないため、ここに2行だけ持つ。
-import { PLAYER_MOVES } from './moves.js';
+import { PLAYER_MOVES, TEKKEN_INPUT, tekkenOn } from './moves.js';
 import { parseInput } from './commands.js';
 import { DIVE_CP } from './tune.js';      // 2026-11-15：急降下の CP 欄に出す数字（出した瞬間に減る量。調整スライダー 100% のとき）
 
@@ -85,10 +85,14 @@ export function buildMoveList(rows = PLAYER_MOVES) {
   const cats = MOVE_CATS.map((c) => ({ ...c, note: c.note || '', entries: [] }));
   const byId = Object.fromEntries(cats.map((c) => [c.id, c]));
   for (const [id, row] of Object.entries(rows)) {
-    const f = formatInput(row.input);
+    // 2026-11-18 試作：鉄拳型のときは、鉄拳型の入れ方を表に出し、前の入れ方は条件の欄に「でも」で添える
+    const tk = tekkenOn() && TEKKEN_INPUT[id];
+    const f = formatInput(tk || row.input);
+    let cond = condOf(tk ? { ...row, altInput: null } : row, rows);
+    if (tk) cond = [cond, `${formatInput(row.input).cmd} でも`].filter(Boolean).join('／');
     byId[catOf(row)].entries.push({
       id, name: row.name || id, desc: row.desc || '', cat: catOf(row),
-      cmd: f.cmd, key: f.key, pad: f.pad, cost: row.cost || (row.energy === 'dive' ? DIVE_CP : 0), cond: condOf(row, rows),
+      cmd: f.cmd, key: f.key, pad: f.pad, cost: row.cost || (row.energy === 'dive' ? DIVE_CP : 0), cond,
     });
   }
   byId.move.entries.unshift(...BASICS.map((b) => ({ ...b, cat: 'move', basic: true })));

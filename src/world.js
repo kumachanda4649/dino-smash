@@ -2,7 +2,8 @@
 // 描画は render.js、入力と場面は game.js。Node でも動く（tools/sim_test.mjs が使う）。
 import { DINOS, PLAYER, isBossLike } from './dinos.js';
 import { clamp, sign, lerp, mulberry32, rectsOverlap } from './util.js';
-import { CommandReader, inputScore } from './commands.js';
+import { CommandReader, inputScore, parseInput } from './commands.js';
+import { TEKKEN_INPUT, tekkenOn } from './moves.js';      // 2026-11-18 試作：鉄拳型の入れ方
 import { zonesOfFrame, zoneInfo } from './weak.js';
 import { bodyRects, partRects, toWorld, cellsOverlap, boxToCells, bboxOf, ringBandCells, waveCells, ringRadius, diskCells, RING_LIVE_U, HIT_TUNE, pillarWidth } from './shape.js';
 import { ENEMY_DOWN, ENEMY_CRASH_STUN_CHANCE, PLAYER_SPECIAL_STUN, PLAYER_SPECIAL_STUN_CHANCE, PLAYER_WAVE_RANGE, PLAYER_ROAR_SCALE, ENEMY_ROAR_SCALE, WAVE_LOCK } from './moves.js';
@@ -369,6 +370,16 @@ export class World {
   setPlayerMoves(defs) {
     this.playerDefs = defs;
     this.playerRows = Object.entries(defs).map(([id, def]) => ({ id, def, parsed: def.parsed, score: inputScore(def.parsed) + (def.from ? 3 : 0) + (def.priority || 0) }));
+    // 2026-11-18 試作：鉄拳型の入れ方を、同じ技の 2 本目の行として足す（前の入れ方も残る）
+    if (tekkenOn()) {
+      for (const [id, src] of Object.entries(TEKKEN_INPUT)) {
+        const def = defs[id]; if (!def) continue;
+        const parsed = parseInput(src);
+        // 鉄拳型の行は、成り立ったら前の行より先（↘ を押したまま攻撃を、↓↘→＋攻撃の衝撃波と取り違えない）。斜めの行は、同じボタンの真っすぐの行（↓＋体当たり）より先
+        const diag = /(down|up)(forward|back)/.test(src) ? 2 : 0;
+        this.playerRows.push({ id, def, parsed, score: inputScore(parsed) + (def.from ? 3 : 0) + (def.priority || 0) + 20 + diag, tekken: true });
+      }
+    }
   }
 
   // ---- 小物 ----

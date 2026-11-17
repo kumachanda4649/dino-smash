@@ -319,6 +319,25 @@ export const PLAYER_MOVES = {
   },
 };
 
+/**
+ * 2026-11-18 試作（Nao「コマンドの入力を今のストリートファイター型から鉄拳型に変えたらいいかもしれません」「あなたが最適だと思うものを」）：
+ *   鉄拳型＝方向を 1 つ押しながらボタン（↘＋攻撃 など）。方向を順に入れるコマンドを使わなくても、同じ技が出る。
+ *   前の入れ方（↓↓＋攻撃 など）もそのまま使える＝足すだけ。style:'tekken' のときだけ足す（?cmd=tekken）。
+ *   ・CP の要らない技とお手軽な踏みつけは「斜め＋攻撃」（鉄拳の ↘＋1・↗＋2 のような形）
+ *   ・CP の大技は「方向＋体当たり（X）」。攻撃ボタンには同時押しを掛けない（掛けると、攻撃が全部わずかに遅れる）
+ *   →→ のダッシュは鉄拳にもある入れ方なのでそのまま。↓（押したまま）↑＋ジャンプの大ジャンプもそのまま。
+ */
+export const CMD_STYLE = { style: 'sf' };
+export const TEKKEN_INPUT = {
+  stomp: 'downforward+attack',      // 跳び上がり踏みつけ（CP12）  ↘＋攻撃
+  uppercut: 'upforward+attack',     // 頭突きの突き上げ           ↗＋攻撃
+  roar: 'down+special',             // 咆哮（CP30）               ↓＋体当たり
+  shockwave: 'downforward+special', // 地を這う衝撃波（CP40）      ↘＋体当たり
+  maul: 'up+special',               // 噛みつき振り回し（CP60）    ↑＋体当たり
+  dive: 'down+special',             // 空中：急降下の踏みつけ      ↓＋体当たり
+};
+export const tekkenOn = () => CMD_STYLE.style === 'tekken';
+
 /** 表の1行を、world.js が動かす形（phases・hits）に展開する。 */
 export function expandRow(id, row, frameMap = {}) {
   const def = {
