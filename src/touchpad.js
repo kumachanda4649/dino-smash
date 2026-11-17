@@ -21,6 +21,16 @@ export const PAD_LAYOUT = {
   keepDeg: 28,                                      // 方向の境目のガタつき防止（普通は 22.5 度）
 };
 
+/**
+ * 2026-11-18（Nao「十字キーの方向がずれる」「コマンド技が出しにくい」）：十字キーの読み方の直し。off で前のとおり。
+ *   float   … 十字キーの円の外でも、画面の左側（zoneW × zoneH）に触れたら、その指の位置を中心にする（親指を置いた所が真ん中）。
+ *             円の中に触れたときは前のとおり円の中心から読む（矢印を直接押せる）。
+ *   follow  … 指が中心から r×follow より離れたら、中心が指を追いかける（戻すときに遠くまで戻さなくてよい）。
+ *   retap   … 方向を入れたまま、指を一番遠くまで行った所の pull 倍より中心へ戻したら「離した」扱い。そこから push×r 押し出せば
+ *             もう一度押した扱い。指を中心まで戻さなくても ↓↓・→→ が入る（ダッシュ・咆哮・急降下）。
+ */
+export const PAD_FIX = { on: true, float: true, zoneW: 0.45, zoneH: 0.78, follow: 1.0, retap: true, pull: 0.5, push: 0.18 };
+
 const DIR8 = [['right'], ['right', 'down'], ['down'], ['left', 'down'], ['left'], ['left', 'up'], ['up'], ['right', 'up']];   // 画面の角度（右 0 度・下 90 度）順
 const ARROWS = { up: '▲', down: '▼', left: '◀', right: '▶' };
 
@@ -161,10 +171,18 @@ export class TouchPad {
     w.addEventListener('touchstart', () => { if (!this.shown) this.show(); }, { capture: true, passive: true });
     w.addEventListener('pointerdown', (e) => {
       if (!this.shown || !accept(e) || this._portrait) return;
-      const zone = this._hit(e.clientX, e.clientY);
+      let zone = this._hit(e.clientX, e.clientY);
       if (!zone) return;
       e.preventDefault();
       const rec = { zone, dir: -1 };
+      if (zone === 'dpadFloat') {
+        // 十字キーはいつも 1 本の指だけ（2 本目の左手の指は無視）
+        if ([...this.ptr.values()].some((p) => p.zone === 'dpad')) return;
+        rec.zone = 'dpad'; rec.bx = e.clientX; rec.by = e.clientY; rec.float = true;
+      } else if (zone === 'dpad') {
+        if ([...this.ptr.values()].some((p) => p.zone === 'dpad')) return;
+        const lay0 = this.layout(); rec.bx = lay0.dpad.cx; rec.by = lay0.dpad.cy;
+      }
       this.ptr.set(e.pointerId, rec);
       try { e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); } catch (_) { /* 捕まえられなくても動く */ }
       this._track(rec, e, true);
@@ -201,14 +219,38 @@ export class TouchPad {
     for (const [k, b] of Object.entries(lay.buttons)) if (Math.hypot(x - b.cx, y - b.cy) <= b.r * s) return k;
     const dp = lay.dpad;
     if (Math.hypot(x - dp.cx, y - dp.cy) <= dp.r * 1.3) return 'dpad';
+    if (PAD_FIX.on && PAD_FIX.float && x <= lay.w * PAD_FIX.zoneW && y >= lay.h * (1 - PAD_FIX.zoneH)) return 'dpadFloat';
     return null;
   }
 
   _track(rec, e, first) {
     const lay = this.layout();
-    if (rec.zone === 'dpad') {
+    if (rec.zone === 'dpad' && !PAD_FIX.on) {
       rec.dir = padDirIndex(e.clientX - lay.dpad.cx, e.clientY - lay.dpad.cy, lay.dpad.r, rec.dir);
       rec.fx = e.clientX - lay.dpad.cx; rec.fy = e.clientY - lay.dpad.cy;
+    } else if (rec.zone === 'dpad') {
+      const r = lay.dpad.r;
+      if (rec.bx === undefined) { rec.bx = lay.dpad.cx; rec.by = lay.dpad.cy; }
+      let dx = e.clientX - rec.bx, dy = e.clientY - rec.by, d = Math.hypot(dx, dy);
+      // 中心が指を追いかける
+      const far = r * PAD_FIX.follow;
+      if (d > far) { const k = (d - far) / d; rec.bx += dx * k; rec.by += dy * k; dx = e.clientX - rec.bx; dy = e.clientY - rec.by; d = far; }
+      let dir = padDirIndex(dx, dy, r, rec.dir);
+      if (PAD_FIX.retap) {
+        // 向きが変わったとき（↓→↘ の転がし・反対への切り返し）は、新しい方向をそのまま入れる。同じ向きのまま戻したときだけ「離した」
+        if (rec.dir >= 0 && dir >= 0 && dir !== rec.dir) rec.peak = d;
+        else if (rec.dir >= 0 && dir >= 0) {
+          rec.peak = Math.max(rec.peak || 0, d);
+          if (d < rec.peak * PAD_FIX.pull) { dir = -1; rec.trough = d; }        // 同じ向きのまま戻した＝離した扱い
+        } else if (rec.dir < 0 && rec.trough !== undefined && dir >= 0) {
+          if (d < rec.trough + r * PAD_FIX.push) { dir = -1; rec.trough = Math.min(rec.trough, d); }   // まだ押し出しが足りない
+        }
+        if (dir < 0 && rec.trough !== undefined) rec.trough = Math.min(rec.trough, d);
+        if (dir >= 0 && rec.dir < 0) { rec.peak = d; rec.trough = undefined; }
+        if (dir < 0 && d < r * PAD_FIX.push) rec.trough = undefined;          // 中心まで戻ったら、ふつうの遊びの読み方に戻る
+      }
+      rec.dir = dir;
+      rec.fx = dx; rec.fy = dy;
     } else if (rec.zone in lay.buttons) {
       // 指をすべらせて隣のボタンへ移れる（A から B へ）。どのボタンの上でもなければ離した扱い
       let hit = null;
@@ -239,6 +281,12 @@ export class TouchPad {
     for (const k of Object.keys(this.arrowEls)) this.arrowEls[k].classList.toggle('on', !!held[k]);
     this.dpadEl.classList.toggle('on', dirIdx >= 0);
     const lay = this.layout(), r = lay.dpad.r, m = Math.hypot(fx, fy) || 1, c = Math.min(m, r * 0.55) / m;
+    if (PAD_FIX.on) {
+      // 十字キーの絵を、いまの中心（触れた所・追いかけた所）へ動かす。離したら元の場所へ
+      const pr = [...this.ptr.values()].find((p) => p.zone === 'dpad');
+      const cx = pr && pr.bx !== undefined ? pr.bx : lay.dpad.cx, cy = pr && pr.by !== undefined ? pr.by : lay.dpad.cy;
+      this.dpadEl.style.left = `${Math.round(cx - r)}px`; this.dpadEl.style.top = `${Math.round(cy - r)}px`;
+    }
     this.knobEl.style.transform = dirIdx >= 0 ? `translate(${Math.round(fx * c)}px, ${Math.round(fy * c)}px)` : '';
     for (const k of Object.keys(this.btnEls)) this.btnEls[k].classList.toggle('on', !!held[k]);
     this.startEl.classList.toggle('on', !!held.pause);
