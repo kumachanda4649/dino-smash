@@ -6,6 +6,8 @@ import { HURT_BY_KIND } from './sounds.js';
 
 /** 部位が尻尾でも口でもなく、技の名前で「ぶつかる」と決める技（ライバル・主人公の頭突き・打ち上げ・尻尾の回転）。 */
 const BLUNT_MOVES = new Set(['launcher', 'uppercut', 'guardSpin', 'trip', 'finisher', 'airTail']);
+/** 口の部位で当てるが「噛む」ではない技（マンモスの牙の突き・翼竜のくちばしの突き／急降下）。hurtSharp のまま。 */
+const NOT_BITE = new Set(['gore', 'peck', 'dive']);
 /** 命中音のうち、くらい音に置き換えてよい物（攻撃の当たり音）。quake（地ひびき）・whoosh（風）などの専用の音はそのまま。 */
 const REPLACEABLE = new Set(['hit', 'bite', 'scratch', 'slam', 'ram', 'bossBite']);
 
@@ -22,6 +24,10 @@ export function hurtKindOf(def, name, hit, heavy = false) {
   if (/tail|rearhalf/.test(part)) return 'hurtBlunt';
   if (/^(ram|quake|whoosh|slam)$/.test(sfx)) return 'hurtBlunt';
   if (/low/.test(part) && !/maw|mouth|claw/.test(part)) return 'hurtBlunt';
+  // 2026-11-18：噛みつき（口の当たり・噛みつきの命中音）は爪と分けて hurtBite。前は爪と同じ hurtSharp＝引っかきの音が鳴っていた（Nao）
+  //   口の部位（maw・mouth）で決める。命中音 bossBite はボスの打撃全般に使われている（骨のなぎ払い・首振り）ので見ない。口の部位でも牙の突き・くちばしは爪側
+  if (HURT_BY_KIND.bite && !/claw/.test(part) && /maw|mouth/.test(part) && !NOT_BITE.has(name)) return 'hurtBite';
+  if (HURT_BY_KIND.bite && /^(bite|bossBite)$/.test(name) && !/claw/.test(part)) return 'hurtBite';      // 技の名前が噛みつき（骨のティラノは頭蓋 skull・モササウルスは前半身 fronthalf で当てている）
   if (/claw|maw|mouth|skull|fronthalf/.test(part)) return 'hurtSharp';
   return 'hurtBlunt';
 }
