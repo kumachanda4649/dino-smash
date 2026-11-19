@@ -4,6 +4,8 @@ import { DINOS, PLAYER, isBossLike } from './dinos.js';
 import { clamp, sign, lerp, mulberry32, rectsOverlap } from './util.js';
 import { CommandReader, inputScore, parseInput } from './commands.js';
 import { TEKKEN_INPUT, tekkenOn } from './moves.js';      // 2026-11-18 試作：鉄拳型の入れ方
+/** 2026-11-20：操作B で、↓ を押してから ↘ へ回すまでがこの秒数以上あれば「A の衝撃波を回して入れた」とみなす（↓ と → のほぼ同時押しの ↘ は踏みつけ）。 */
+const TEKKEN_ROLL = 0.04;
 import { zonesOfFrame, zoneInfo } from './weak.js';
 import { bodyRects, partRects, toWorld, cellsOverlap, boxToCells, bboxOf, ringBandCells, waveCells, ringRadius, diskCells, RING_LIVE_U, HIT_TUNE, pillarWidth } from './shape.js';
 import { ENEMY_DOWN, ENEMY_CRASH_STUN_CHANCE, PLAYER_SPECIAL_STUN, PLAYER_SPECIAL_STUN_CHANCE, PLAYER_WAVE_RANGE, PLAYER_ROAR_SCALE, ENEMY_ROAR_SCALE, WAVE_LOCK } from './moves.js';
@@ -1478,9 +1480,15 @@ export class World {
     const wet = !!this.water && p.isPlayer && !p.onGround && this.inWater(p);
     if (wet && (d.ctx === 'air' || WATER.noMoves.includes(r.id))) return false;
     if (r.id === 'bigJump' && this.water && p.isPlayer && this.inWater(p)) return false;      // 点検と監修：海底・水中の岩棚に立っているときも、水の中では大ジャンプ不可（wet は足が着いていないときだけだった）
+    // 2026-11-20 監査：操作B の行の歯止め
+    //   泳いでいる間は ↑↓ が泳ぎそのもの＝「方向＋体当たり」が常に成り立ち、体当たりが咆哮・噛みつき振り回しに化けた → 水の中では B の行を出さない（A の入れ方は出る）
+    //   ガードが決まった直後（ガード返しの受付）は、↓ を押したまま向き直ると必ず ↘ になり、ガード返しが踏みつけに化けた → 受付の間は B の攻撃の行を出さない
+    if (r.tekken && (wet || (p.guardOkT > 0 && r.parsed.btns.some((b) => b.btn === 'attack')))) return false;
     if (d.ctx === 'ground' && !p.onGround && !wet) return false;
     if (d.ctx === 'air' && p.onGround) return false;
-    if (this.moveCost(d, p) > p.gauge) return false;
+    // B の「方向＋体当たり」の行は CP が足りなくても候補に残し、選ばれたら「CP 不足」で止める（tekkenOrDeny。別の CP 技に化けさせない）。
+    //   B の「斜め＋攻撃」（踏みつけ）は今までどおり候補から落とす＝足りなければ足払い・噛みつきなど無料の技になる（スティックで ↓ が斜めに入っても CP 不足で止まらない）
+    if (!(r.tekken && r.parsed.btns.some((b) => b.btn === 'special')) && this.moveCost(d, p) > p.gauge) return false;
     if (d.requires === 'platform' && !(p.onGround && p.sup && p.sup !== 'ground')) return false;
     if (d.requires === 'airjump' && !(p.airJumps > 0)) return false;
     if (d.requires === 'dash' && !(p.dashT > 0)) return false;
@@ -1498,15 +1506,41 @@ export class World {
 
   /** mode: 'neutral'（何もしていない）/ 'cancel'（技の途中で打ち切る。cur=いまの技）。成立した行 {id,row} か null。 */
   resolvePlayerMove(p, mode, cur) {
-    const cand = this.playerRows.filter((r) => this.rowEligible(r, p, mode, cur));
+    let cand = this.playerRows.filter((r) => this.rowEligible(r, p, mode, cur));
     if (!cand.length) return null;
-    const pick = this.reader.resolve(cand, p.facing);
+    // 2026-11-20 監査：B の ↘＋攻撃（踏みつけ）と A の ↓↘→＋攻撃（衝撃波）が両方成り立つとき、↓ を先に押してから回していれば衝撃波（「B でも A の入れ方は使える」を守る）。
+    //   ↓ と → をほぼ同時に押した ↘＋攻撃は、これまでどおり踏みつけ
+    if (cand.some((r) => r.tekken && r.id === 'stomp')) {
+      const sw = cand.find((r) => !r.tekken && r.id === 'shockwave');
+      const m = sw && this.reader._match(sw.parsed, p.facing);
+      if (m && m.segs.length >= 2 && m.segs[1].start - m.segs[0].start >= TEKKEN_ROLL) cand = cand.filter((r) => !(r.tekken && r.id === 'stomp'));
+    }
+    const pick0 = this.reader.resolve(cand, p.facing);
+    const pick = pick0 && pick0.row.tekken ? this.tekkenOrDeny(p, pick0) : pick0;
     // 版2.4：空中の ↓＋攻撃は、空中コンボの最中だけ宙返りの尻尾叩きつけ（spike）。コンボ中でない空中では急降下（dive）。↓↓＋攻撃はいつでも急降下。
     if (pick && pick.id === 'spike' && !this.inAirCombo(p, mode, cur)) {
       const dr = this.playerRows.find((r) => r.id === 'dive');
       if (dr && (mode !== 'cancel' || cur.def.cancel.into.includes('dive')) && this.moveCost(dr.def, p) <= p.gauge) return this.diveOrDeny(p, { ...pick, id: 'dive', row: dr });
     }
     return pick && pick.id === 'dive' ? this.diveOrDeny(p, pick) : pick;
+  }
+
+  /** 主人公のやられ音＝くらい音（攻撃の種類）＋命中音。
+   *  2026-11-20 監査：噛まれたとき（hurtBite）に命中音 'bite' を重ねると、同じ素材（Dino_Btl_Attack_Bite）が 2 つ同時に鳴って音がこもる・大きくなる。
+   *  そのときは命中音を重ねず、くらい音を 1.5 倍に（平均の大きさ −18.1dB。版4.5 の「引っかき＋命中音」−18.9dB とほぼ同じ。重ねていた 4.6〜4.7 は −16.5dB）。 */
+  playerHurtSound(def, name, hit, heavy = false) {
+    const k = playerHurtSfx(def, name, hit, heavy), hs = hit.sfx || 'hit';
+    if (k === 'hurtBite' && hs === 'bite') { this.sfx(k, 1.5); return; }
+    this.sfx(k); this.sfx(hs, 0.8);
+  }
+
+  /** 2026-11-20 監査：操作B の行は、CP が足りなければ出さずに「CP 不足」（入力は使い切り）。前は候補から落ちるだけで、↑＋体当たりが体当たり（CP50）に、↘＋体当たりが咆哮（CP30）に化けて CP を使った。 */
+  tekkenOrDeny(p, pick) {
+    if (p !== this.player || this.moveCost(pick.row.def, p) <= p.gauge) return pick;
+    this.sfx('cancel', 0.8);
+    this.popup(p.x, p.y - p.bh - 8, 'CP 不足', { size: 20, color: '#8fb4ff', dur: 0.6 });
+    if (this.logHook) this.lg('tekkenDeny', { id: pick.id, g: Math.round(p.gauge) });
+    return null;
   }
 
   /** 2026-10-23：急降下は CP が足りないと出さない。入力は使い切り（resolve が消費済み）なので、他の技へ化けず、押しっぱなしで繰り返し鳴ることもない。 */
@@ -4087,7 +4121,7 @@ export class World {
       }
     }
     if (hit.grab) { this.startGrab(e, hit, cx, cy); return true; }      // 版2.3：つかみ（引きずり込み）
-    this.sfx(playerHurtSfx(e.move && e.move.def, e.move && e.move.name, hit, brk)); this.sfx(hit.sfx || 'hit', 0.8);      // 2026-11-15：やられ音は受けた攻撃の種類で（brk＝コンボ破りの大技は重い音）
+    this.playerHurtSound(e.move && e.move.def, e.move && e.move.name, hit, brk);      // 2026-11-15：やられ音は受けた攻撃の種類で（brk＝コンボ破りの大技は重い音）
     this.spark(cx, cy, 'hurt', dir, 1.2);
     if (e.rival) {
       // ライバルの技：吹き飛ばし（launch）は、主人公を弱めに押す・浮かせる形に読み替える（主人公には「弾」の状態が無い）。
@@ -4187,7 +4221,7 @@ export class World {
   /** 口でくわえた：主人公は 'grabbed'（動けない・ほかの攻撃を受けない）。左右を交互に押すと抜けられる。 */
   startGrab(e, hit, cx, cy) {
     const p = this.player, m = e.move, spec = (m && m.def.grab) || { need: 6, tick: 0.4, tickDmg: 2 };
-    this.sfx(playerHurtSfx(m && m.def, m && m.name, hit)); this.sfx(hit.sfx || 'hit', 0.8);
+    this.playerHurtSound(m && m.def, m && m.name, hit);
     this.spark(cx, cy, 'hurt', e.facing, 1.3);
     this.lastHurtSrc = { by: e.type, mv: m ? m.name : (hit.mv || null) };
     if (this.logHook) this.lg('hurt', { by: e.type, mv: m ? m.name : (hit.mv || null), dmg: hit.dmg, hp: Math.round(Math.max(0, p.hp - hit.dmg)), res: 'hit' });      // 版2.8：つかみ（くわえ）のダメージも遊びの記録に残す（前は漏れていた）

@@ -225,7 +225,7 @@ function helpTexts() {
   const L1 = '←→ 移動（素早く2回でダッシュ、ダッシュ中に攻撃で体当たり）　地上で当てながら攻撃を連打すると4段コンボ';      // 2026-11-15：当てたときだけつながる
   const guard = '↑+攻撃 打ち上げ　地上の ↓+攻撃 足払い　↓を押し続けてガード（CP消費）・押してすぐ受け止めるとパリィ';
   let L2 = `↓↓+攻撃 咆哮（周り全部を吹き飛ばす）　↓↘→+攻撃 衝撃波　前・後・前+攻撃 噛みつき振り回し　空中 ↓↓+攻撃 急降下（CPを${DIVE_CP}使う）`;      // 2026-11-15：技表の「CP を 15 使う」とそろえる（取り込みの見直し）
-  if (tekkenOn()) L2 = `【操作B】↓+体当たり 咆哮　↘+体当たり 衝撃波　↑+体当たり 噛みつき振り回し　↘+攻撃 踏みつけ　↗+攻撃 頭突き　空中 ↓+体当たり 急降下`;      // 2026-11-18 試作（前の入れ方も使える）
+  if (tekkenOn()) L2 = `【操作B】↓+体当たり 咆哮　↘+体当たり 衝撃波　↑+体当たり 噛みつき振り回し　↘+攻撃 踏みつけ　↗+攻撃 頭突き　空中 ↓+体当たり 急降下（CPを${DIVE_CP}使う）`;      // 2026-11-20：急降下の CP を A の文とそろえる      // 2026-11-18 試作（前の入れ方も使える）
   const K = 'キーボード： ←→↑↓ いどう　Z 攻撃　X ジャンプ　C 体当たり　Enter 決定　Esc ポーズ　M 消音　F 全画面';
   const P = 'ゲームパッド： 十字/左スティック いどう　A 攻撃　B ジャンプ　X・Y 体当たり　Start ポーズ・決定　Back+A 消音　Back+B タイトルへ';
   const SND = '音が鳴らないときは、キーを1回押すか画面をクリックしてください（ブラウザの決まりで、最初に1回の操作が要ることがあります）';
@@ -440,7 +440,7 @@ export function drawPadBadge(ctx, game, x, y) {
 export const PAUSE_ITEMS = [
   { id: 'resume', en: 'CONTINUE', jp: 'つづける', help: '戦闘にもどる（Esc / Start でも）' },
   { id: 'moves', en: 'MOVE LIST', jp: '技表', help: '出せる技と、コマンド・CP の量を見る' },
-  { id: 'option', en: 'OPTION', jp: 'オプション', help: '音量・CP 消費なし・当たり判定の表示を戦闘中に変える' },
+  { id: 'option', en: 'OPTION', jp: 'オプション', help: '音量・CP 消費なし・当たり判定の表示・技の入れ方を戦闘中に変える' },
   { id: 'title', en: 'TITLE', jp: 'タイトルへもどる', help: '今の遊びを終えてタイトルへ（確認が出ます）' },
 ];
 
@@ -726,7 +726,7 @@ export function drawOptions(ctx, game) {
     }
   });
   const row = rows[game.optSel];
-  text(ctx, row.help || (row.id === 'level' ? 'やさしい・ふつう・むずかしい（面が進むほど強くなる曲線は共通）' : 'Enter / A で前の画面へ'), W / 2, y0 + rows.length * rh + 44, { size: 18, align: 'center', color: '#e8edf7' });
+  text(ctx, row.help || (row.id === 'level' ? 'やさしい・ふつう・むずかしい（面が進むほど強くなる曲線は共通）' : 'Enter / A で前の画面へ'), W / 2, y0 + rows.length * rh + 44, { size: 18, align: 'center', color: '#e8edf7', maxW: W - 40 });      // 2026-11-20：長い説明（COMMAND）でも画面の幅に収める
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, H - 56, W, 56);
   text(ctx, '↑ ↓ 項目　← → 値（押しっぱなしで速く）　Enter / A 決定　Esc / T / B もどる　　設定は自動で保存されます', W / 2, H - 22, { size: 17, align: 'center', color: '#cfe0ff' });
 }

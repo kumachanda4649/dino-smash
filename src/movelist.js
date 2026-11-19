@@ -89,13 +89,16 @@ export function buildMoveList(rows = PLAYER_MOVES) {
     const tk = tekkenOn() && TEKKEN_INPUT[id];
     const f = formatInput(tk || row.input);
     let cond = condOf(tk ? { ...row, altInput: null } : row, rows);
-    if (tk) cond = [cond, `${formatInput(row.input).cmd} でも`].filter(Boolean).join('／');
+    // 2026-11-20 監査：B の表では A の入れ方を「でも」で添える。もう一つの入れ方（急降下の「コンボ中でない空中は ↓＋攻撃 でも」）の条件も落とさない
+    if (tk) cond = [cond, `${formatInput(row.input).cmd} でも`, row.altInput ? `${row.altWhen || ''}は ${formatInput(row.altInput).cmd} でも` : null].filter(Boolean).join('／');
     byId[catOf(row)].entries.push({
       id, name: row.name || id, desc: row.desc || '', cat: catOf(row),
       cmd: f.cmd, key: f.key, pad: f.pad, cost: row.cost || (row.energy === 'dive' ? DIVE_CP : 0), cond,
     });
   }
   byId.move.entries.unshift(...BASICS.map((b) => ({ ...b, cat: 'move', basic: true })));
+  // 2026-11-20 監査：B の「方向＋体当たり」は、CP が足りないと別の技に化けず「CP 不足」で止まる（world.js tekkenOrDeny）。一言を B 用に
+  if (tekkenOn()) byId.special.note = 'CP が足りないとき：B の入れ方（方向＋体当たり）は「CP 不足」で出ない。A の入れ方は別の技が出るものがある（咆哮→足払い／衝撃波→踏みつけか噛みつき／噛みつき振り回し→噛みつき）';
   const moves = cats.reduce((n, c) => n + c.entries.filter((e) => !e.basic).length, 0);
   return { cats, count: moves, total: cats.reduce((n, c) => n + c.entries.length, 0) };
 }

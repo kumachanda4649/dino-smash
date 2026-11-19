@@ -3,10 +3,8 @@ import { AudioSys } from './audio.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
 import { TouchPad } from './touchpad.js';
-import { CMD_STYLE } from './moves.js';
 
-const params = new URLSearchParams(location.search);
-if (params.get('cmd') === 'tekken') CMD_STYLE.style = 'tekken';      // 2026-11-18 試作：鉄拳型の入れ方を足す（?cmd=tekken）
+const params = new URLSearchParams(location.search);      // 操作 A/B（?cmd=）は game.js が保存と合わせて決める（2026-11-20：ここで決めていた行は game.js が必ず上書きしていたので外した）
 if (params.get('editor') === '1') {
   location.replace('editor/index.html');      // 版3.1：面エディタの入り口（遊ぶ人の邪魔にならないよう、画面には出さず URL だけ）。ゲームは起動しない
 } else {

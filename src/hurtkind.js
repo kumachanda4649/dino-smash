@@ -27,7 +27,7 @@ export function hurtKindOf(def, name, hit, heavy = false) {
   // 2026-11-18：噛みつき（口の当たり・噛みつきの命中音）は爪と分けて hurtBite。前は爪と同じ hurtSharp＝引っかきの音が鳴っていた（Nao）
   //   口の部位（maw・mouth）で決める。命中音 bossBite はボスの打撃全般に使われている（骨のなぎ払い・首振り）ので見ない。口の部位でも牙の突き・くちばしは爪側
   if (HURT_BY_KIND.bite && !/claw/.test(part) && /maw|mouth/.test(part) && !NOT_BITE.has(name)) return 'hurtBite';
-  if (HURT_BY_KIND.bite && /^(bite|bossBite)$/.test(name) && !/claw/.test(part)) return 'hurtBite';      // 技の名前が噛みつき（骨のティラノは頭蓋 skull・モササウルスは前半身 fronthalf で当てている）
+  if (HURT_BY_KIND.bite && /^(bite|bossBite|breach)$/.test(name) && !/claw/.test(part)) return 'hurtBite';      // 技の名前が噛みつき（骨のティラノは頭蓋 skull・モササウルスは前半身 fronthalf で当てている）
   if (/claw|maw|mouth|skull|fronthalf/.test(part)) return 'hurtSharp';
   return 'hurtBlunt';
 }

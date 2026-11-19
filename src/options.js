@@ -12,6 +12,7 @@ import { DISPLAY_SCALE } from './bignum.js';
 import { stageKey } from './layout.js';
 export const LEVEL_MAX = 5;          // BGM・SE の段階（0〜5）
 export const STORAGE_KEY = 'dinoArtsOptions';
+export const CMD_KEY = 'dinoArtsCmd';      // 2026-11-20：操作 A/B の控え（古い版のオプション保存が cmd を落としても戻せるように）
 
 // 版3.7の公式面の並び。旧セーブの stage はこの並びでの配列番号。
 const LEGACY_STAGE_KEYS = [1, 2, 3, 4, 'sea', 5, 6].flatMap((world) =>
@@ -67,6 +68,8 @@ export function loadOptions(stages = 32, storage) {
     if (raw) {
       const saved = JSON.parse(raw);
       const options = normalizeOptions(saved, stageCount);
+      // 2026-11-20 監査：古い版（cmd を知らない）がオプションを保存し直すと cmd が消える。そのときは控え（CMD_KEY）から戻す
+      if (!(saved && typeof saved === 'object' && 'cmd' in saved)) { try { options.cmd = st.getItem(CMD_KEY) === 'tekken' ? 'tekken' : 'sf'; } catch (e) { /* */ } }
       if (Array.isArray(stages)) {
         const key = typeof saved?.stageKey === 'string' ? saved.stageKey : LEGACY_STAGE_KEYS[options.stage];
         if (key !== undefined) options.stage = Math.max(0, stages.findIndex((s) => stageKey(s) === key));
@@ -82,7 +85,12 @@ export function saveOptions(o, storage, stages) {
   const key = selected && stageKey(selected);
   // 旧版のランチャーも同じ保存を読むので、番号は旧順で残す。
   const saved = key ? { ...o, stage: Math.max(0, LEGACY_STAGE_KEYS.indexOf(key)), stageKey: key } : o;
-  try { (storage || localStorage).setItem(STORAGE_KEY, JSON.stringify(saved)); return true; } catch (e) { return false; }      // 覚えられなくてよい
+  try {
+    const st = storage || localStorage;
+    st.setItem(STORAGE_KEY, JSON.stringify(saved));
+    if (o.cmd === 'tekken' || o.cmd === 'sf') st.setItem(CMD_KEY, o.cmd);      // 2026-11-20：操作 A/B の控え（古い版に消されても戻せる）
+    return true;
+  } catch (e) { return false; }      // 覚えられなくてよい
 }
 
 /** 値を1段動かす（←→）。dir=+1/-1。戻り値は新しい設定（変わらなければ同じ値のコピー）。bool は ←→どちらでも反転。 */

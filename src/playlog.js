@@ -109,7 +109,7 @@ export class PlayLog {
     this.sid = null; this.ts = null; this.t0 = 0; this.seq = 0;
     this.buf = []; this.inflight = false; this.lastFlush = 0; this.failN = 0; this.retryAt = 0;
     this.prevHeld = {}; this.pend = []; this.dirHist = [];
-    this.moveInfo = null; this.facing = () => 1; this.btnHeld = {};
+    this.moveInfo = null; this.moveVars = null; this.facing = () => 1; this.btnHeld = {};
   }
 
   /** 新しい遊びを始める。meta は session 行に入る（版・難しさ・オプション・面など）。moveRows は技の表（コマンドの失敗の推測用）。 */
@@ -130,13 +130,24 @@ export class PlayLog {
 
   _moveInfo(rows) {
     const info = {};
+    this.moveVars = [];
     for (const r of rows) {
       const p = r.parsed || (r.def && r.def.parsed);
       if (!p) continue;
-      info[r.id] = { steps: p.steps.map((s) => s.dir), btns: p.btns.map((b) => b.btn) };
+      const steps = p.steps.map((s) => s.dir), btns = p.btns.map((b) => b.btn);
+      this.moveVars.push({ id: r.id, steps, btns: [...btns] });
+      // 2026-11-20：同じ技に入れ方が 2 つ（操作B の行）あるときは、ボタンは両方を足し、方向の並びは長いほう（A の入れ方）を残す。
+      //   前は後の行で上書きしていたので、操作B では A のコマンドが成功しても「失敗」と推測された
+      const was = info[r.id];
+      if (!was) { info[r.id] = { steps, btns }; continue; }
+      for (const b of btns) if (!was.btns.includes(b)) was.btns.push(b);
+      if (steps.length > was.steps.length) was.steps = steps;
     }
     return info;
   }
+
+  /** 2026-11-20：遊びの途中で技の表が変わった（ポーズのオプションで操作 A/B を切り替えた）ときに、コマンドの推測を作り直す。 */
+  setMoveRows(rows) { this.moveVars = null; this.moveInfo = rows ? this._moveInfo(rows) : null; }
 
   _line(t, type, data) {
     if (this.off) return;      // 記録に対応していないサーバ：溜めない
@@ -240,7 +251,7 @@ export class PlayLog {
     const got = p.res ? this.moveInfo[p.res] : null;
     if (got && got.steps.length >= 2) return;                     // コマンド技が出た＝成功
     let best = null;
-    for (const [id, m] of Object.entries(this.moveInfo)) {
+    for (const { id, ...m } of this.moveVars || Object.entries(this.moveInfo).map(([id, v]) => ({ id, ...v }))) {      // 2026-11-20：入れ方ごとに（A の並びに B のボタン、のような無い組み合わせで推測しない）
       if (m.steps.length < 2 || !m.btns.includes(p.btn)) continue;
       const need = m.steps.filter((s) => !/^(down|up)(forward|back)$/.test(s));      // 斜めは「下＋前」の同時押しなので、方向の並びからは外す
       if (need.length < 2) continue;

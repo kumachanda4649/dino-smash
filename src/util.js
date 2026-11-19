@@ -21,4 +21,4 @@ export function rectsOverlap(a, b) {
 }
 
 /** 版の表示（タイトルの隅）。 */
-export const VERSION = 'ver 4.7（技の入れ方 A/B）';      // タイトルの右上に 24px・右寄せで描くので、3.8 と同じくらいの長さに収める（長いと左へはみ出す）
+export const VERSION = 'ver 4.8（念入りなデバッグ）';      // タイトルの右上に 24px・右寄せで描くので、3.8 と同じくらいの長さに収める（長いと左へはみ出す）

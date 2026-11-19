@@ -295,7 +295,14 @@ export class Game {
     if (row.id === 'mpFree') this.urlMpFree = false;      // 自分で選んだ CP FREE は保存する
     if (row.id === 'cmd') this.urlCmd = false;      // 2026-11-19：自分で選んだ操作方法は保存する
     saveOptions({ ...this.opts, ...(this.urlMpFree ? { mpFree: this.savedMpFree } : null), ...(this.urlCmd ? { cmd: this.savedCmd } : null) }, undefined, this.stages);
-    if (row.id === 'cmd') { CMD_STYLE.style = this.opts.cmd; if (this.world) this.world.setPlayerMoves(this.world.playerDefs); }      // 戦闘中（ポーズから）に変えても、その場で効く
+    if (row.id === 'cmd') {      // 戦闘中（ポーズから）に変えても、その場で効く
+      CMD_STYLE.style = this.opts.cmd;
+      if (this.world) this.world.setPlayerMoves(this.world.playerDefs);
+      // 2026-11-20：技表と、遊びの記録のコマンドの推測も作り直す（前は開いたときの入れ方のまま残った）
+      this.moveList = buildMoveList();
+      this.moveCat = Math.min(this.moveCat, this.moveList.cats.length - 1); this.moveCur = 0;
+      if (this.plog.active && this.world) this.plog.setMoveRows(this.world.playerRows);
+    }
     if (this.plog.active) this.plog.ev('opt', { id: row.id, v: this.opts[row.id] });
     if (row.id === 'bgm' || row.id === 'se') this.audio.setLevels(this.opts.bgm, this.opts.se);
     if (row.id === 'collision') this.hitbox = this.opts.collision;
@@ -328,7 +335,7 @@ export class Game {
     }
     if (edge.confirm) {
       if (row.kind === 'action') this.closeOptions();
-      else if (row.kind === 'bool') this.changeOption(row, 1);
+      else if (row.kind === 'bool' || row.id === 'cmd') this.changeOption(row, 1);      // 2026-11-20：A/B も決定で切り替わる（パッドの A・画面の決定）
       else this.audio.se('decide');
     }
   }
@@ -402,12 +409,12 @@ export class Game {
     if (!this.logAllowed()) { if (this.plog.active) this.plog.end('restart'); return; }
     this.fstat = { frames: 0, sum: 0, max: 0, slow: 0 };
     const o = this.opts, st = this.stages[stageIndex], inp = this.input;
-    const q = {}; for (const k of ['stage', 'diff', 'mpfree', 'cpfree', 'hitbox', 'px']) if (this.params.has(k)) q[k] = this.params.get(k);
+    const q = {}; for (const k of ['stage', 'diff', 'mpfree', 'cpfree', 'hitbox', 'px', 'cmd']) if (this.params.has(k)) q[k] = this.params.get(k);
     const tc = tuneChanged();      // 版2.6：どの調整（割合）で遊んだか。100% でないものだけ session 行に残す
     this.plog.begin({
       ...(Object.keys(tc).length ? { tune: tc } : null),
       v: VERSION, diff: this.difficulty, start: stageIndex + 1, label: st ? st.label : null,
-      opts: { mpFree: this.run.mpFree ? 1 : 0, stageSel: this.run.stageSel ? 1 : 0, bgm: o.bgm, se: o.se, collision: o.collision ? 1 : 0 },
+      opts: { mpFree: this.run.mpFree ? 1 : 0, stageSel: this.run.stageSel ? 1 : 0, bgm: o.bgm, se: o.se, collision: o.collision ? 1 : 0, cmd: o.cmd },      // cmd（2026-11-20）：どちらの入れ方で遊んだか
       dev: inp.padConnected ? 'pad' : 'key', pad: inp.padConnected ? inp.padName : null,
       auto: this.autoDriven() ? 1 : 0, q, px: this.assets.usePx ? 1 : 0,
     }, { moveRows: this.world.playerRows, facing: () => (this.world && this.world.player ? this.world.player.facing : 1) });
