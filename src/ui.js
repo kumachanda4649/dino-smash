@@ -225,7 +225,7 @@ function helpTexts() {
   const L1 = '←→ 移動（素早く2回でダッシュ、ダッシュ中に攻撃で体当たり）　地上で当てながら攻撃を連打すると4段コンボ';      // 2026-11-15：当てたときだけつながる
   const guard = '↑+攻撃 打ち上げ　地上の ↓+攻撃 足払い　↓を押し続けてガード（CP消費）・押してすぐ受け止めるとパリィ';
   let L2 = `↓↓+攻撃 咆哮（周り全部を吹き飛ばす）　↓↘→+攻撃 衝撃波　前・後・前+攻撃 噛みつき振り回し　空中 ↓↓+攻撃 急降下（CPを${DIVE_CP}使う）`;      // 2026-11-15：技表の「CP を 15 使う」とそろえる（取り込みの見直し）
-  if (tekkenOn()) L2 = `【鉄拳型】↓+体当たり 咆哮　↘+体当たり 衝撃波　↑+体当たり 噛みつき振り回し　↘+攻撃 踏みつけ　↗+攻撃 頭突き　空中 ↓+体当たり 急降下`;      // 2026-11-18 試作（前の入れ方も使える）
+  if (tekkenOn()) L2 = `【操作B】↓+体当たり 咆哮　↘+体当たり 衝撃波　↑+体当たり 噛みつき振り回し　↘+攻撃 踏みつけ　↗+攻撃 頭突き　空中 ↓+体当たり 急降下`;      // 2026-11-18 試作（前の入れ方も使える）
   const K = 'キーボード： ←→↑↓ いどう　Z 攻撃　X ジャンプ　C 体当たり　Enter 決定　Esc ポーズ　M 消音　F 全画面';
   const P = 'ゲームパッド： 十字/左スティック いどう　A 攻撃　B ジャンプ　X・Y 体当たり　Start ポーズ・決定　Back+A 消音　Back+B タイトルへ';
   const SND = '音が鳴らないときは、キーを1回押すか画面をクリックしてください（ブラウザの決まりで、最初に1回の操作が要ることがあります）';
@@ -365,7 +365,7 @@ function drawTitleNew(ctx, game) {
   const tagY = Math.round(bottom + 46);
   text(ctx, '敵を殴って、壁に叩きつけろ。', L.cx, tagY, { size: 22, align: 'center', color: '#fff' });
   ctx.fillStyle = 'rgba(255,225,160,0.55)'; ctx.fillRect(L.cx - 250, tagY - 38, 500, 1.5);
-  text(ctx, VERSION.split('（')[0] + (tekkenOn() ? '　鉄拳型' : ''), W - 20, 28, { size: 16, align: 'right', color: '#ffe9a8' });      // 版（右上に小さく。中身の説明は出さず「ver 4.0」だけ＝タイトルに長い文を出さない）
+  text(ctx, VERSION.split('（')[0] + (tekkenOn() ? '　操作B' : ''), W - 20, 28, { size: 16, align: 'right', color: '#ffe9a8' });      // 版（右上に小さく。中身の説明は出さず「ver 4.0」だけ＝タイトルに長い文を出さない）
   // メニュー：薄い半透明の板の上に小さく
   const M = S.menu, o = game.opts, sel = game.titleSel, rh = 40;
   const notes = [];
@@ -700,7 +700,7 @@ export function drawOptions(ctx, game) {
   text(ctx, VERSION, W - 20, 36, { size: 24, align: 'right', color: '#ffe9a8', shadow: '#000', glow: 6 });
 
   const rows = game.optRows(), o = game.opts;
-  const x0 = 250, x1 = W - 250, y0 = 168, rh = rows.length > 8 ? 46 : rows.length > 7 ? 52 : 58;      // 版2.3：行が8本になったので、行の間をわずかに詰める（下の説明文と帯に重ならないように）
+  const x0 = 250, x1 = W - 250, y0 = 168, rh = rows.length > 9 ? 42 : rows.length > 8 ? 46 : rows.length > 7 ? 52 : 58;      // 版2.3：行が8本になったので、行の間をわずかに詰める（下の説明文と帯に重ならないように）
   ctx.fillStyle = 'rgba(10,16,30,0.78)'; ctx.fillRect(x0 - 24, y0 - 16, x1 - x0 + 48, rows.length * rh + 30);
   ctx.strokeStyle = 'rgba(232,237,247,0.55)'; ctx.lineWidth = 3; ctx.strokeRect(x0 - 24, y0 - 16, x1 - x0 + 48, rows.length * rh + 30);
   rows.forEach((row, i) => {
@@ -738,6 +738,7 @@ function optionValue(game, row, o) {
     case 'mpFree': return onoff(o.mpFree);
     case 'collision': return onoff(o.collision);
     case 'playlog': return onoff(o.playlog);
+    case 'cmd': return { text: o.cmd === 'tekken' ? 'B　方向＋ボタン' : 'A　順に入れる', color: o.cmd === 'tekken' ? '#9fe8ff' : '#fff', size: 24, w: 230 };
     case 'numScale': return { text: o.numScale === 1 ? 'そのまま' : '×' + DISPLAY_SCALE, color: o.numScale === 1 ? '#cfd8ea' : '#ffe14a', size: 26, w: 150 };
     case 'bgm': case 'se': {
       const n = o[row.id];

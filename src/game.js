@@ -21,6 +21,7 @@ import { DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from './difficulty.js';
 import { setNumScale } from './bignum.js';
 import { OPTION_ROWS, PAUSE_OPTION_ROWS, loadOptions, saveOptions, stepOption } from './options.js';
 import { buildMoveList } from './movelist.js';
+import { CMD_STYLE } from './moves.js';
 import { PlayLog, makeTransport } from './playlog.js';
 import { VERSION } from './util.js';
 import { TUNE, TUNE_TABLE, loadTune, tuneChanged } from './tune.js';
@@ -48,6 +49,10 @@ export class Game {
     // 保存されていた値を覚えておき、保存するときはそちらを書く（オプションで CP FREE そのものを切り替えたら、その選んだ値を保存する）
     this.urlMpFree = false;
     if (params.get('mpfree') === '1' || params.get('cpfree') === '1') { this.savedMpFree = this.opts.mpFree; this.opts.mpFree = true; this.urlMpFree = true; }
+    // 2026-11-19：操作方法 A/B（オプションの COMMAND・保存する）。URL の ?cmd=tekken|sf はその回だけ（保存しない＝CP FREE と同じ扱い）
+    this.urlCmd = false;
+    { const uc = params.get('cmd'); if (uc === 'tekken' || uc === 'sf') { this.savedCmd = this.opts.cmd; this.opts.cmd = uc; this.urlCmd = true; } }
+    CMD_STYLE.style = this.opts.cmd;
     setNumScale(this.opts.numScale);                           // 版3.5：数字の大きさ（表示だけ）
     this.hitbox = params.get('hitbox') === '1' || this.opts.collision;     // 当たり判定（絵の形）を色付きの枠で表示。H キーでも切り替え。オプションの COLLISION でも
     this.run = { mpFree: false, stageSel: false };           // 版2.0：この回に使った補助（HUD に印を出す）
@@ -288,7 +293,9 @@ export class Game {
     this.opts = stepOption(before, row.id, dir, this.stages.length);
     if (JSON.stringify(before) === JSON.stringify(this.opts)) return;
     if (row.id === 'mpFree') this.urlMpFree = false;      // 自分で選んだ CP FREE は保存する
-    saveOptions(this.urlMpFree ? { ...this.opts, mpFree: this.savedMpFree } : this.opts, undefined, this.stages);
+    if (row.id === 'cmd') this.urlCmd = false;      // 2026-11-19：自分で選んだ操作方法は保存する
+    saveOptions({ ...this.opts, ...(this.urlMpFree ? { mpFree: this.savedMpFree } : null), ...(this.urlCmd ? { cmd: this.savedCmd } : null) }, undefined, this.stages);
+    if (row.id === 'cmd') { CMD_STYLE.style = this.opts.cmd; if (this.world) this.world.setPlayerMoves(this.world.playerDefs); }      // 戦闘中（ポーズから）に変えても、その場で効く
     if (this.plog.active) this.plog.ev('opt', { id: row.id, v: this.opts[row.id] });
     if (row.id === 'bgm' || row.id === 'se') this.audio.setLevels(this.opts.bgm, this.opts.se);
     if (row.id === 'collision') this.hitbox = this.opts.collision;

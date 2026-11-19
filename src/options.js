@@ -18,7 +18,7 @@ const LEGACY_STAGE_KEYS = [1, 2, 3, 4, 'sea', 5, 6].flatMap((world) =>
   [1, 2, 3, 4].map((n) => world === 'sea' ? `S${n}` : `${world}-${n}`));
 LEGACY_STAGE_KEYS.push('7-4');      // 旧最終面のライバル戦は、再編後にワールド内の4面目へ移動
 
-export const DEFAULT_OPTIONS = Object.freeze({ bgm: LEVEL_MAX, se: LEVEL_MAX, stage: 0, mpFree: false, collision: false, playlog: true, numScale: DISPLAY_SCALE });
+export const DEFAULT_OPTIONS = Object.freeze({ bgm: LEVEL_MAX, se: LEVEL_MAX, stage: 0, mpFree: false, collision: false, playlog: true, numScale: DISPLAY_SCALE, cmd: 'sf' });      // cmd（2026-11-19）：操作方法 'sf'＝A（方向を順に入れる）／'tekken'＝B（方向＋ボタン）
 
 /** 画面に並べる行（順番どおり）。kind: choice=難しさ / level=0〜5 / bool / stage / action */
 export const OPTION_ROWS = [
@@ -30,6 +30,7 @@ export const OPTION_ROWS = [
   { id: 'collision', en: 'COLLISION',    jp: '当たり判定を見る',     kind: 'bool',  pause: true, help: '体と攻撃の当たる範囲を色つきの枠で表示（遊びの途中は H キーでも切り替え）' },
   { id: 'playlog',   en: 'PLAY LOG',     jp: '遊びの記録',           kind: 'bool',  help: '遊んだ内容（入力・技・ダメージなど）を、このパソコンの中だけに記録する。難しさや技の調整に使う（個人情報は入らない）' },
   { id: 'numScale', en: 'NUMBERS',      jp: '数字の大きさ',         kind: 'scale', help: 'ダメージと体力の「見える数字」だけを大きくする（×100）。中身の強さや計算は変わらない' },
+  { id: 'cmd',       en: 'COMMAND',      jp: '技の入れ方',           kind: 'scale', pause: true, help: 'A＝方向を順に入れる（↓↓＋攻撃 など）　B＝方向を押しながらボタン（↓＋体当たり など）。B でも A の入れ方は使える' },
   { id: 'back',      en: 'EXIT',         jp: 'もどる',               kind: 'action', pause: true },
 ];
 
@@ -53,6 +54,7 @@ export function normalizeOptions(o, stageCount = 32) {
     collision: s.collision === true,
     playlog: s.playlog !== false,      // 版2.3：遊びの記録（既定 ON。明示的に false のときだけ OFF）
     numScale: s.numScale === 1 ? 1 : DISPLAY_SCALE,      // 版3.5：数字の大きさ（1＝そのまま／DISPLAY_SCALE＝×100）。1 のときだけそのまま、ほかは既定の×100
+    cmd: s.cmd === 'tekken' ? 'tekken' : 'sf',      // 2026-11-19：操作方法 A/B（知らない値は A）
   };
 }
 
@@ -91,6 +93,7 @@ export function stepOption(o, id, dir, stageCount = 32) {
     case 'stage': n.stage = clampInt(o.stage + dir, 0, stageCount - 1, o.stage); break;
     case 'mpFree': case 'collision': case 'playlog': n[id] = !o[id]; break;
     case 'numScale': n.numScale = o.numScale === 1 ? DISPLAY_SCALE : 1; break;
+    case 'cmd': n.cmd = o.cmd === 'tekken' ? 'sf' : 'tekken'; break;      // 2026-11-19：操作方法 A⇔B
     default: break;
   }
   return n;
