@@ -807,7 +807,8 @@ export const DINOS = {
 
   // 雑魚：カルノタウルス（角の突進型。噛みつきと速い体当たり）
   Carnotaurus: {
-    label: 'カルノタウルス', artFacing: -1, scale: 1.15,
+    // 2026-11-25：新しい絵は待機の高さ 139→142px。画面の高さを前と同じに保つため 1.15→1.126。歩き（10-23 承認の動画）は前と同じ大きさのまま＝1.15/1.126
+    label: 'カルノタウルス', artFacing: -1, scale: 1.126, motionScale: { Walk: 1.021 },
     motions: ['Idle', 'Bite', 'Charge', 'Damage', 'Down', 'Downed', 'Revive', 'Walk'],
     hurt: { w: 0.5, y0: 0.0, y1: 0.9 },
     hp: 80, score: 1100, speed: 105, tier: 'grunt',
@@ -818,19 +819,21 @@ export const DINOS = {
     moves: {
       bite: {
         motion: 'Bite', hits: { bite: { part: 'maw', x0: 0.2, x1: 1.55, y0: 0, y1: 0.95, dmg: 13, kb: 300, stun: 0.3, sfx: 'bite' } },
+        // 2026-11-25：本編の新しい絵（案A・11-01）に取り込み直し。コマの割り振りは新しい絵の伸びきり（17〜19 コマ）に合わせた
         phases: [
-          { from: 0, to: 17, dur: 0.5, tele: true },
-          { from: 18, to: 27, dur: 0.17, hit: 'bite', sfx: 'bite', lunge: 70 },
-          { from: 28, to: 42, dur: 0.42 },
+          { from: 0, to: 16, dur: 0.5, tele: true },
+          { from: 17, to: 26, dur: 0.17, hit: 'bite', sfx: 'bite', lunge: 70 },
+          { from: 27, to: 39, dur: 0.42 },
         ],
       },
       charge: {
+        // 新しい体当たり（v2）：0〜10 構え・11〜21 跳んで突っ込む（ここを繰り返して壁まで）・22〜33 腹から滑って止まる・34〜40 起き上がる
         motion: 'Charge', hits: { ram: { part: 'maw', x0: 0.2, x1: 1.4, y0: 0, y1: 0.95, dmg: 18, kb: 540, stun: 0.4, sfx: 'ram' } },
         phases: [
-          { from: 0, to: 12, dur: 0.75, tele: true, sfx: 'growl' },
-          { from: 13, to: 28, dur: 1.5, hit: 'ram', vx: 780, until: 'wall', loop: [16, 28, 24], armor: true },
-          { from: 29, to: 33, dur: 0.45, vx: 280, armor: true },
-          { from: 34, to: 38, dur: 0.4 },
+          { from: 0, to: 10, dur: 0.75, tele: true, sfx: 'growl' },
+          { from: 11, to: 21, dur: 1.5, hit: 'ram', vx: 780, until: 'wall', loop: [14, 21, 16], armor: true },
+          { from: 22, to: 33, dur: 0.7, vx: 280, armor: true },
+          { from: 34, to: 40, dur: 0.45 },
         ],
       },
     },
@@ -896,31 +899,36 @@ export const DINOS = {
     },
   },
 
-  // 雑魚：アロケントロサウルス（背のトゲの中型の肉食。噛みつきとひっかく）
+  // 雑魚：アロケントロサウルス（背のトゲの中型の肉食。噛みつきと体当たり）
+  // 2026-11-25：本編の新しい絵柄（10-31・Nao 判定 r1031e）に取り込み直し。新しい絵柄にひっかくの動画が無いので、本編と同じく体当たりに替えた
   AllocentrosaurusR: {
-    label: 'アロケントロサウルス', artFacing: -1, scale: 1.28, motionScale: { Walk: 1.01 },   // 版3.7 歩きの大きさ
-    motions: ['Idle', 'Bite', 'Claw', 'Damage', 'Down', 'Downed', 'Revive', 'Walk'],
+    // 新しい絵は待機の高さ 131→142px。画面の高さを前と同じに保つため 1.28→1.181。歩き（版3.7 で 1.01）は前と同じ大きさのまま＝1.01×1.28/1.181
+    label: 'アロケントロサウルス', artFacing: -1, scale: 1.181, motionScale: { Walk: 1.095 },
+    motions: ['Idle', 'Bite', 'Charge', 'Damage', 'Down', 'Downed', 'Revive', 'Walk'],
     hurt: { w: 0.5, y0: 0.0, y1: 0.9 },
     hp: 75, score: 900, speed: 110, tier: 'grunt',
     ai: { type: 'multi', moves: [
       { id: 'bite', range: [0, 1.5], w: 3, cd: 1.2 },
-      { id: 'claw', range: [0, 1.4], w: 2.5, cd: 1.3 },
+      { id: 'charge', range: [2.0, 99], w: 3, cd: 4.5 },
     ], gap: [0.5, 1.2] },
     moves: {
       bite: {
+        // 5〜16 頭を引いて溜め・19〜26 伸びきり
         motion: 'Bite', hits: { bite: { part: 'maw', x0: 0.2, x1: 1.55, y0: 0, y1: 0.95, dmg: 12, kb: 280, stun: 0.3, sfx: 'bite' } },
         phases: [
-          { from: 0, to: 13, dur: 0.55, tele: true },
-          { from: 15, to: 25, dur: 0.18, hit: 'bite', sfx: 'bite', lunge: 70 },
-          { from: 26, to: 40, dur: 0.45 },
+          { from: 0, to: 18, dur: 0.55, tele: true },
+          { from: 19, to: 28, dur: 0.18, hit: 'bite', sfx: 'bite', lunge: 70 },
+          { from: 29, to: 38, dur: 0.45 },
         ],
       },
-      claw: {
-        motion: 'Claw', hits: { claw: { part: 'claw', x0: 0.2, x1: 1.45, y0: 0, y1: 0.95, dmg: 10, kb: 260, stun: 0.3, sfx: 'scratch' } },
+      charge: {
+        // 0〜12 構え・13〜21 跳んで突っ込む（ここを繰り返して壁まで）・22〜28 腹から滑って止まる・29〜38 起き上がる
+        motion: 'Charge', hits: { ram: { part: 'maw', x0: 0.2, x1: 1.4, y0: 0, y1: 0.95, dmg: 16, kb: 500, stun: 0.4, sfx: 'ram' } },
         phases: [
-          { from: 0, to: 26, dur: 0.6, tele: true },
-          { from: 27, to: 35, dur: 0.2, hit: 'claw', sfx: 'scratch', lunge: 55 },
-          { from: 36, to: 46, dur: 0.42 },
+          { from: 0, to: 12, dur: 0.75, tele: true, sfx: 'growl' },
+          { from: 13, to: 21, dur: 1.5, hit: 'ram', vx: 680, until: 'wall', loop: [15, 21, 14], armor: true },
+          { from: 22, to: 28, dur: 0.5, vx: 260, armor: true },
+          { from: 29, to: 38, dur: 0.5 },
         ],
       },
     },
