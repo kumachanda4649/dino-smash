@@ -77,7 +77,9 @@ export function loadOptions(stages = 32, storage) {
       return options;
     }
   } catch (e) { /* 読めなくても遊べる */ }
-  return normalizeOptions(null, stageCount);
+  const def = normalizeOptions(null, stageCount);
+  try { if ((storage || localStorage).getItem(CMD_KEY) === 'tekken') def.cmd = 'tekken'; } catch (e) { /* */ }      // 2026-11-24：本体の保存が無く控えだけあるときも、操作 B を戻す
+  return def;
 }
 
 export function saveOptions(o, storage, stages) {
@@ -88,7 +90,8 @@ export function saveOptions(o, storage, stages) {
   try {
     const st = storage || localStorage;
     st.setItem(STORAGE_KEY, JSON.stringify(saved));
-    if (o.cmd === 'tekken' || o.cmd === 'sf') st.setItem(CMD_KEY, o.cmd);      // 2026-11-20：操作 A/B の控え（古い版に消されても戻せる）
+    // 2026-11-20：操作 A/B の控え（古い版に消されても戻せる）。2026-11-24：控えが書けなくても本体は保存できたので true（別の try）
+    try { if (o.cmd === 'tekken' || o.cmd === 'sf') st.setItem(CMD_KEY, o.cmd); } catch (e) { /* */ }
     return true;
   } catch (e) { return false; }      // 覚えられなくてよい
 }

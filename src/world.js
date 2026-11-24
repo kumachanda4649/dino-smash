@@ -1515,6 +1515,16 @@ export class World {
       const m = sw && this.reader._match(sw.parsed, p.facing);
       if (m && m.segs.length >= 2 && m.segs[1].start - m.segs[0].start >= TEKKEN_ROLL) cand = cand.filter((r) => !(r.tekken && r.id === 'stomp'));
     }
+    // 2026-11-24 監査：→ を押したまま ↓↓＋攻撃（A の咆哮）も、↘ が開くので B の踏みつけに化けていた。
+    //   A の「方向 2 段以上＋ボタン」の行（衝撃波は上の TEKKEN_ROLL で見る）が成り立っていれば、同じボタンで別の技になる B の行は捨てる
+    const tk = cand.filter((r) => r.tekken);
+    if (tk.length) {
+      const multi = cand.filter((r) => !r.tekken && r.id !== 'shockwave' && r.parsed.steps.length >= 2 && this.reader._match(r.parsed, p.facing));
+      if (multi.length) {
+        const btnOf = (r) => r.parsed.btns.map((b) => b.btn).join('+');
+        cand = cand.filter((r) => !(r.tekken && multi.some((a) => btnOf(a) === btnOf(r) && a.id !== r.id)));
+      }
+    }
     const pick0 = this.reader.resolve(cand, p.facing);
     const pick = pick0 && pick0.row.tekken ? this.tekkenOrDeny(p, pick0) : pick0;
     // 版2.4：空中の ↓＋攻撃は、空中コンボの最中だけ宙返りの尻尾叩きつけ（spike）。コンボ中でない空中では急降下（dive）。↓↓＋攻撃はいつでも急降下。
@@ -1575,7 +1585,7 @@ export class World {
 
   runPlayerRow(p, pick, fromCancel) {
     const d = pick.row.def;
-    if (this.logHook && p === this.player) this.lg('move', { id: pick.id, air: !p.onGround ? 1 : 0, cx: fromCancel ? 1 : 0 });
+    if (this.logHook && p === this.player) this.lg('move', pick.row.tekken ? { id: pick.id, air: !p.onGround ? 1 : 0, cx: fromCancel ? 1 : 0, tk: 1 } : { id: pick.id, air: !p.onGround ? 1 : 0, cx: fromCancel ? 1 : 0 });      // tk＝操作B の入れ方（方向を押しながらボタン）で出た
     if (!(this.mpFree && p === this.player)) p.gauge -= this.moveCost(d, p);
     p.gauge = Math.max(0, p.gauge - this.energyCost(d, p));      // 2026-10-23：急降下の消費（必殺ではないので cost には入れない）      // 版2.0：オプションの CP FREE＝主人公のゲージ消費なし
     if (d.family === 'wave') { p.waveUses = (p.waveUses || []).filter((t) => this.time - t < WAVE_LOCK.costWin); p.waveUses.push(this.time); }

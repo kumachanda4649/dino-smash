@@ -229,7 +229,7 @@ export class PlayLog {
       if (p.res || t - p.t > this.tune.cmdWait + 0.2) continue;
       if (info && info.btns.length && !info.btns.includes(p.btn)) continue;
       if (info && !info.btns.length) continue;
-      p.res = d.id; break;
+      p.res = d.id; p.tk = !!d.tk; break;
     }
   }
 
@@ -249,7 +249,7 @@ export class PlayLog {
   _judge(p) {
     if (!this.moveInfo || p.seq.length < 2) return;
     const got = p.res ? this.moveInfo[p.res] : null;
-    if (got && got.steps.length >= 2) return;                     // コマンド技が出た＝成功
+    if (got && got.steps.length >= 2 && !p.tk) return;            // コマンド技が出た＝成功（2026-11-24：操作B の 1 段の入れ方で出たときは、A のコマンドの成功に数えない）
     let best = null;
     for (const { id, ...m } of this.moveVars || Object.entries(this.moveInfo).map(([id, v]) => ({ id, ...v }))) {      // 2026-11-20：入れ方ごとに（A の並びに B のボタン、のような無い組み合わせで推測しない）
       if (m.steps.length < 2 || !m.btns.includes(p.btn)) continue;
@@ -267,7 +267,7 @@ export class PlayLog {
         if (!best || score > best.score) best = { id, k, n: need.length, score };
       }
     }
-    if (!best) return;
+    if (!best || (p.tk && best.id === p.res)) return;      // 操作B の入れ方で、推測した技そのものが出た＝失敗ではない
     // 並びの順序が全く合わない（k が 1 で、ただ方向を押しただけ）ものは、k が need-1 以上のものだけ残している
     const seq = p.seq.map((h) => `${h.a}@${Math.round((h.t - p.t) * 1000)}`).join(' ');
     this._line(p.t, 'cmdmiss', { btn: p.btn, seq, got: p.res || null, near: { id: best.id, k: best.k, n: best.n } });

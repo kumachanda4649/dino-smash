@@ -98,7 +98,8 @@ export function buildMoveList(rows = PLAYER_MOVES) {
   }
   byId.move.entries.unshift(...BASICS.map((b) => ({ ...b, cat: 'move', basic: true })));
   // 2026-11-20 監査：B の「方向＋体当たり」は、CP が足りないと別の技に化けず「CP 不足」で止まる（world.js tekkenOrDeny）。一言を B 用に
-  if (tekkenOn()) byId.special.note = 'CP が足りないとき：B の入れ方（方向＋体当たり）は「CP 不足」で出ない。A の入れ方は別の技が出るものがある（咆哮→足払い／衝撃波→踏みつけか噛みつき／噛みつき振り回し→噛みつき）';
+  // 2026-11-24 監査：A 用（約 60 字）でも幅に詰められていたので、B 用も同じくらいに縮める
+  if (tekkenOn()) byId.special.note = 'CP が足りないとき：方向＋体当たりは「CP 不足」で出ない（A の入れ方は別の技が出るものがある）';
   const moves = cats.reduce((n, c) => n + c.entries.filter((e) => !e.basic).length, 0);
   return { cats, count: moves, total: cats.reduce((n, c) => n + c.entries.length, 0) };
 }
